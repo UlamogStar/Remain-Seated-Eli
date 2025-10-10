@@ -85,6 +85,45 @@
                     "isPartOfComposite": false
                 }
             ]
+        },
+        {
+            "name": "Look",
+            "id": "3b813bba-fcb6-4846-a5fa-9f78867e62d5",
+            "actions": [
+                {
+                    "name": "LookInput",
+                    "type": "Value",
+                    "id": "d5053802-184a-4f5d-99f3-6db084aadabd",
+                    "expectedControlType": "Vector2",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": true
+                }
+            ],
+            "bindings": [
+                {
+                    "name": "",
+                    "id": "d66f1d6b-94be-428d-87c7-5c9b4425dba6",
+                    "path": "<Mouse>/delta",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "LookInput",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "d881b9b3-8a96-4a38-812a-3d36c70d2a98",
+                    "path": "<Joystick>/stick",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "LookInput",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                }
+            ]
         }
     ],
     "controlSchemes": []

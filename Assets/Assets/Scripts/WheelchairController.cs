@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -9,6 +10,9 @@ public class WheelchairController : MonoBehaviour
     public InputActionReference rightWheelAction;
     public InputActionReference scrollAction;
 
+    // camera test variables
+    public InputActionReference cameraAction;
+    
     [Header("Movement Settings")]
     public float wheelForce = 100f;    // forward/back force when both wheels engaged
     public float turnForce = 50f;      // torque when one wheel is engaged
@@ -22,6 +26,31 @@ public class WheelchairController : MonoBehaviour
     private Rigidbody rb;
     private bool leftWheelActive;
     private bool rightWheelActive;
+    
+    // camera test variables   ---------------------------------------------------
+    [Header("Camera Rotation Limits")]
+    [Tooltip("Look sensitivity for camera rotation")]
+    public float mouseSensitivity = 10;
+    private float xRotation = 0f; // vertical rotation
+    private float yRotation = 0f; // horizontal rotation
+   
+    [Tooltip("Limits the vertical rotation of the camera for looking down")]
+    [SerializeField] private float minVertical = -30f; // to limit vertical rotation
+    [Tooltip("Limits the vertical rotation of the camera for looking up")]
+    [SerializeField] private float maxVertical = 30f; // to limit vertical rotation
+    [Tooltip("Limits the horizontal rotation of the camera for looking left and right")]
+    [SerializeField] private float maxHorizontal = 60f; // to limit horizontal rotation
+    private float baseYaw = 0f; // initial yaw of the chair
+    private float basePitch = 0f; // initial pitch of the chair
+
+    private void Start()
+    {
+        // gets Scene position of the chair camera and sets it as the base rotation to solve camera jumps on start
+        // could put in awake but have not tested it yet there
+        baseYaw = transform.eulerAngles.y;
+        basePitch = transform.eulerAngles.x;
+    }
+
 
     private void Awake()
     {
@@ -57,6 +86,13 @@ public class WheelchairController : MonoBehaviour
         rb.linearDamping = 1.5f;
         rb.angularDamping = 2f;
         rb.constraints = RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationZ;
+        
+        // Subscribe to camera action -----------------------------------------
+        if (cameraAction)
+        {
+            cameraAction.action.Enable();
+        }
+        
     }
 
     private void OnDisable()
@@ -78,6 +114,13 @@ public class WheelchairController : MonoBehaviour
             scrollAction.action.performed -= OnScroll;
             scrollAction.action.Disable();
         }
+        
+        // Camera Action Unsubscribe ----------------------------------
+        if (cameraAction)
+        {
+            cameraAction.action.Disable();
+        }
+        
     }
 
     private void Update()
@@ -131,6 +174,50 @@ public class WheelchairController : MonoBehaviour
             // Turn left (positive scroll => counter-clockwise yaw)
             if (Mathf.Abs(rb.angularVelocity.y) < maxTurnSpeed)
                 rb.AddTorque(Vector3.up * -scroll * turnForce, ForceMode.Force);
+        }
+    }
+    // ---------------------- camera detection testing section -----------------------
+
+    private void FixedUpdate()
+    {
+        CameraDetection(); // start Raycast detection for playerlook
+        
+        // get input action for mouse and stick movement
+        Vector2 lookInput = cameraAction.action.ReadValue<Vector2>();
+        
+        // scale input by sensitivity and time for smoothing and consistency across frame rates
+        // takes the input from the input action and makes sure that it works on different machines
+        float mouseX = lookInput.x * mouseSensitivity * Time.deltaTime;
+        float mouseY = lookInput.y * mouseSensitivity * Time.deltaTime;
+
+        // --- Vertical rotation ---
+        xRotation -= mouseY; // invert mouseY for natural feel 
+        xRotation = Mathf.Clamp(xRotation, minVertical, maxVertical);// clamp vertical rotation
+
+        // --- Horizontal rotation ---
+        yRotation += mouseX;// add mouseX to horizontal rotation
+        yRotation = Mathf.Clamp(yRotation, -maxHorizontal, maxHorizontal); // clamp horizontal rotation
+
+        // Combine both rotations in one quaternion
+        // this changes the rotation of the chair  base on the input from the mouse after they have been clamped
+        Quaternion combinedRotation = Quaternion.Euler(basePitch + xRotation, baseYaw + yRotation, 0f);
+        transform.rotation = combinedRotation; // apply rotation to the chair
+    }
+
+    private void CameraDetection() // raycast to detect objects in front of camera
+    {
+        Vector3 fwd = transform.TransformDirection(Vector3.forward); // get forward direction of chair
+        
+        if (Physics.Raycast(transform.position, fwd, out RaycastHit hit, 100f)) // raycast from chair position forward
+        {
+         
+            Debug.Log("Hit" + hit.collider.name); // log the name of the object hit by the raycast for testing
+            
+            Debug.DrawRay(playerCamera.position,fwd * hit.distance, Color.red); // draw red ray to show hit to show in editor what was hit
+        }
+        else
+        {
+            Debug.DrawRay(playerCamera.position, fwd * 10f, Color.green); // if nothing is hit, draw green ray to show in editor
         }
     }
 }

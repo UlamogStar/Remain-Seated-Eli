@@ -36,6 +36,13 @@ public class WheelChair_Test : MonoBehaviour
     private float basePitch; // used for initial camera alignment
     public Camera mainCamera;
     
+    [Header("Highlight Settings")]
+    public Material highlightMaterial;   // assign in Inspector
+    private MeshRenderer lastHighlightedRenderer;
+    private Material[] originalMaterials;
+    Canvas lastCanvas;
+    public Canvas interactionCanvas;
+    
 
     private void Awake()
     {
@@ -47,6 +54,8 @@ public class WheelChair_Test : MonoBehaviour
         // not used yet but will be when camera and player interaction is fully implemented so camera does not jump on start
         baseYaw = transform.eulerAngles.y;
         basePitch = transform.eulerAngles.x;
+        
+        interactionCanvas.gameObject.SetActive(false); // set interaction canvas to inactive at start
     }
 
     private void OnEnable()
@@ -187,19 +196,74 @@ public class WheelChair_Test : MonoBehaviour
         {
             Debug.DrawRay(mainCamera.transform.position, fwd * hit.distance, Color.red);
 
-            // Check if object has Interactable script
             Interactable interactable = hit.collider.GetComponent<Interactable>();
+            MeshRenderer meshRenderer = hit.collider.GetComponent<MeshRenderer>();
+            Canvas canvas = hit.collider.GetComponent<Canvas>();
+
+            if (meshRenderer && interactable)
+            {
+                if (meshRenderer != lastHighlightedRenderer)
+                {
+                    // Remove outline from previous
+                    if (lastHighlightedRenderer != null)
+                    {
+                        RemoveOutline(lastHighlightedRenderer);
+                    }
+
+                    // Add outline to new
+                    AddOutline(meshRenderer);
+                    lastHighlightedRenderer = meshRenderer;
+                    
+                    // Enable the new interactable's canvas
+                    if (interactable)
+                    {
+                        interactionCanvas.gameObject.SetActive(true);
+                    }
+                }
+            }
 
             if (interactable && interactAction.action.WasPressedThisFrame())
             {
                 Debug.DrawRay(mainCamera.transform.position, fwd * 10f, Color.blue);
                 Debug.Log("Interacting with: " + hit.collider.name);
-                interactable.Interact(); // triggers the event on that object
+                interactable.Interact();
             }
         }
         else
         {
             Debug.DrawRay(mainCamera.transform.position, fwd * 10f, Color.green);
+            if (lastHighlightedRenderer != null)
+            {
+                RemoveOutline(lastHighlightedRenderer);
+                lastHighlightedRenderer = null;
+                
+            }
+            
+            interactionCanvas.gameObject.SetActive(false);
+            
+        }
+    }
+
+    // Add outline material temporarily
+    private void AddOutline(MeshRenderer renderer)
+    {
+        var mats = renderer.sharedMaterials;
+        var newMats = new Material[mats.Length + 1];
+        mats.CopyTo(newMats, 0);
+        newMats[mats.Length] = highlightMaterial;
+        renderer.materials = newMats;
+    }
+
+    // Remove outline material
+    private void RemoveOutline(MeshRenderer renderer)
+    {
+        var mats = renderer.sharedMaterials;
+        if (mats.Length > 1 && mats[mats.Length - 1] == highlightMaterial)
+        {
+            var newMats = new Material[mats.Length - 1];
+            for (int i = 0; i < newMats.Length; i++)
+                newMats[i] = mats[i];
+            renderer.materials = newMats;
         }
     }
 }
